@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ff4fa3">
+<title>Recall — Pixel Study Cards</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon/icon.jpg" type="image/jpeg">
+<link rel="apple-touch-icon" href="icon/icon.jpg">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="sky"></div>
+<main>
+  <h1>Kristal♡ </h1>
+  <p class="hint">Revalida Mastery Flashcards</p>
+  <div class="app-tools">
+    <p id="appstatus" class="hint" role="status" aria-live="polite">Checking app status...</p>
+    <button class="btn mini alt" id="sound" type="button" aria-pressed="true">♫ Sound on</button>
+    <button class="btn mini" id="install" type="button" hidden>Install app</button>
+  </div>
+  <nav>
+    <button data-tab="import" class="on">Import</button>
+    <button data-tab="study">Study</button>
+    <button data-tab="deck">Deck</button>
+  </nav>
+
+  <section id="import" class="box">
+    <label class="btn" for="file">Upload / capture notes</label>
+    <input id="file" type="file" accept="image/*" hidden>
+    <button class="btn alt" id="sample">Try sample</button>
+    <p id="ocr" class="hint"></p>
+    <textarea id="raw" placeholder="abd - Abdomen&#10;ROM - Range of Motion"></textarea>
+    <div id="preview"></div>
+    <button class="btn big" id="make">Create flashcards</button>
+  </section>
+
+  <section id="study" hidden>
+    <div class="bar">
+      <select id="mode">
+        <option value="all">All cards</option>
+        <option value="focus">Focus: weak first</option>
+      </select>
+      <label><input type="checkbox" id="typed"> Type answer</label>
+      <button class="btn mini" id="start">Shuffle &amp; start</button>
+    </div>
+    <p id="count" class="hint"></p>
+    <div class="prog"><i id="pbar"></i></div>
+    <div id="stage">
+      <div id="card">
+        <div class="face front"><small>What does this mean?</small><b id="fa"></b><small>Tap to flip</small></div>
+        <div class="face back"><b id="fm"></b></div>
+      </div>
+    </div>
+    <form id="tf" hidden>
+      <input id="ans" autocomplete="off" placeholder="Type the meaning">
+      <button class="btn mini">Check</button>
+    </form>
+    <p id="verdict" class="hint"></p>
+    <div id="acts" class="acts" hidden>
+      <button class="btn alt" id="again">Review again</button>
+      <button class="btn" id="got">Got it</button>
+    </div>
+  </section>
+
+  <section id="deck" class="box" hidden>
+    <div id="stats"></div>
+    <div id="list"></div>
+    <button class="btn alt mini" id="clear">Clear deck</button>
+  </section>
+</main>
+<script src="vendor/tesseract/tesseract.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

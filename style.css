@@ -1,0 +1,65 @@
+:root{--ink:#5a2347;--hot:#ff4fa3;--cream:#fff7fb;--back:#ffe9f4}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-height:100vh;font:800 16px 'Nunito',sans-serif;color:var(--ink);
+  background:linear-gradient(160deg,#ffe3f1,#ffb3da 55%,#ff8fc7) fixed}
+main{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:22px 16px 40px}
+h1{margin:0;font:400 24px 'Press Start 2P',monospace;color:#fff;text-shadow:3px 3px 0 var(--hot)}
+.hint{margin:8px 0;font-size:14px;opacity:.75}
+
+/* floating pixel stars */
+#sky{position:fixed;inset:0;overflow:hidden;pointer-events:none}
+#sky i{position:absolute;bottom:-30px;width:var(--s);height:var(--s);background:#fff;opacity:.75;
+  box-shadow:var(--s) 0 #fff,calc(var(--s)*-1) 0 #fff,0 var(--s) #fff,0 calc(var(--s)*-1) #fff;
+  animation:rise 12s linear infinite;will-change:transform}
+@keyframes rise{to{transform:translateY(-115vh)}}
+
+/* buttons */
+button,.btn,select,input,textarea{font-family:inherit;color:var(--ink)}
+button,.btn{display:inline-block;padding:11px 14px;font:400 11px 'Press Start 2P',monospace;cursor:pointer;
+  background:var(--hot);color:#fff;border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);
+  transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease}
+button:active,.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+button:focus-visible,.btn:focus-within,input:focus-visible,textarea:focus-visible,#card:focus-visible{outline:3px dashed var(--ink);outline-offset:3px}
+.alt{background:#fff;color:var(--ink)}
+.mini{padding:8px 10px;font-size:9px}
+.big{width:100%;margin-top:12px;padding:14px}
+.app-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.app-tools .hint{flex:1;min-width:180px}
+nav{display:flex;gap:8px;margin:14px 0}
+nav button{flex:1;background:var(--cream);color:var(--ink)}
+nav button.on{background:var(--hot);color:#fff}
+
+/* panels */
+.box{background:var(--cream);border:4px solid var(--ink);box-shadow:6px 6px 0 var(--ink);padding:16px}
+textarea{width:100%;height:150px;margin-top:10px;padding:10px;border:3px solid var(--ink);background:#fff;font:700 15px monospace}
+.chip{display:inline-block;margin:3px;padding:3px 8px;background:#fff;border:2px solid var(--ink);font-size:13px}
+
+/* study */
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0}
+select{padding:6px;border:3px solid var(--ink);background:#fff}
+.prog{height:14px;border:3px solid var(--ink);background:#fff}
+.prog i{display:block;height:100%;width:0;background:var(--hot);transition:width .45s cubic-bezier(.22,1,.36,1)}
+#stage{position:relative;perspective:900px;margin:18px 0}
+#card{position:relative;height:250px;cursor:pointer;transform-style:preserve-3d;transition:transform .65s cubic-bezier(.2,.75,.25,1);will-change:transform}
+#card.flip{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  padding:16px;text-align:center;backface-visibility:hidden;background:var(--cream);border:4px solid var(--ink);box-shadow:6px 6px 0 var(--ink)}
+.back{transform:rotateY(180deg);background:var(--back)}
+.face b{font:400 26px/1.4 'Press Start 2P',monospace;word-break:break-word}
+.back b{font-size:15px;line-height:1.7}
+.face small{opacity:.6;font-size:13px}
+#tf{display:flex;gap:8px}
+#tf input{flex:1;padding:10px;border:3px solid var(--ink)}
+.acts{display:flex;gap:12px;margin-top:12px}
+.acts .btn{flex:1;padding:14px 8px}
+.pop{position:absolute;left:50%;top:50%;width:10px;height:10px;pointer-events:none;animation:pop .65s cubic-bezier(.16,1,.3,1) forwards;will-change:transform,opacity}
+@keyframes pop{to{transform:translate(var(--x),var(--y));opacity:0}}
+
+/* deck */
+.tag{display:inline-block;margin:0 6px 6px 0;padding:3px 8px;border:2px solid var(--ink);font-size:12px;font-style:normal;background:#ffc857}
+.tag.needs{background:#ff7a99}.tag.mastered{background:#7bd88f}
+.row{display:grid;grid-template-columns:70px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-top:2px dashed #e9a6c8}
+.row b{font-family:'Press Start 2P',monospace;font-size:10px;word-break:break-all}
+
+@media (prefers-reduced-motion:reduce){#sky i,.pop{animation:none}#card,button,.btn,.prog i{transition:none}}
