@@ -4,8 +4,10 @@ const KEY = 'recall-deck-v1';
 const SOUND_KEY = 'recall-sound-v1';
 let deck = JSON.parse(localStorage.getItem(KEY) || '[]');
 let queue = [], cur = null, total = 0, done = 0;
+let flippedThisCard = false;
 let audio = null, installPrompt = null, ocrWorker = null;
 const OCR_ASSETS = new URL('./vendor/tesseract/', window.location.href).href;
+const MAX_OCR_IMAGE_BYTES = 7 * 1024 * 1024;
 
 const save = () => localStorage.setItem(KEY, JSON.stringify(deck));
 const today = () => new Date().toISOString().slice(0, 10);
@@ -98,25 +100,37 @@ function parse(text) {
 }
 
 /* ---------- Mastery logic ---------- */
-// Mastered = 3 right in a row AND correct on 2+ different days
-const status = c => c.streak >= 3 && c.days >= 2 ? 'mastered'
-  : c.wrong > 0 && c.streak < 2 ? 'needs' : 'learning';
+const statuses = ['needs', 'learning', 'mastered'];
+const status = c => statuses.includes(c.masteryStatus) ? c.masteryStatus : 'learning';
 const rank = { needs: 0, learning: 1, mastered: 2 };
+const countStatus = value => deck.filter(c => status(c) === value).length;
+
+function renderStatusSummary(lastCard = null) {
+  const counts = `Needs: ${countStatus('needs')} · Learning: ${countStatus('learning')} · Mastered: ${countStatus('mastered')}`;
+  const result = lastCard ? ` · Last result: ${status(lastCard).toUpperCase()} — ${lastCard.a}` : '';
+  $('#status-summary').textContent = counts + result;
+}
 
 function grade(ok) {
   const c = cur;
   if (!c) return;
+  c.masteryStatus = ok ? (flippedThisCard ? 'learning' : 'mastered') : 'needs';
   if (ok) {
     c.right++; c.streak++;
     if (c.last !== today()) { c.days++; c.last = today(); }
   } else {
     c.wrong++; c.streak = 0; c.days = 0;
   }
-  save(); burst(ok);
+  save();
+  renderStatusSummary(c);
+  burst(ok);
   playNotes(ok ? [[659, 0, .09], [988, .09, .12]] : [[330, 0, .13]]);
   queue.shift();
-  if (ok) done++;
-  else queue.splice(Math.min(3, queue.length), 0, c.id);       // wrong cards return in ~3 cards
+  if (ok) {
+    done++;
+  } else {
+    queue.splice(Math.min(3, queue.length), 0, c.id);       // wrong cards return in ~3 cards
+  }
   next();
 }
 
@@ -149,12 +163,15 @@ function next() {
     $('#acts').hidden = true; $('#tf').hidden = true;
     return;
   }
+  flippedThisCard = false;
   $('#fa').textContent = cur.a; $('#fm').textContent = cur.m;
+  $('#mastery-progress').textContent = `${status(cur)} · tap to flip`;
   $('#acts').hidden = false; $('#tf').hidden = !$('#typed').checked;
 }
 
 $('#card').onclick = () => {
   if (!cur) return;
+  flippedThisCard = true;
   $('#card').classList.toggle('flip');
   playNotes([[523, 0, .06]]);
 };
@@ -168,6 +185,7 @@ $('#tf').onsubmit = e => {
   const n = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const ok = n($('#ans').value) === n(cur.m);
   $('#verdict').textContent = ok ? 'Correct! Press Got it.' : 'Not quite. Check the back, then press Review again.';
+  flippedThisCard = true;
   $('#card').classList.add('flip');
   playNotes([[523, 0, .06]]);
 };
@@ -186,33 +204,94 @@ $('#sample').onclick = () => {
   showPreview();
 };
 
+async function prepareOcrImage(file) {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const maxDimension = 2800;
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const context = canvas.getContext('2d');
+  if (!context) {
+    bitmap.close();
+    throw new Error('Could not prepare the photo for OCR.');
+  }
+  context.filter = 'grayscale(1) contrast(1.2)';
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  const image = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  if (Math.ceil(image.length * 3 / 4) > MAX_OCR_IMAGE_BYTES) {
+    throw new Error('The processed photo is still too large. Try a closer, lower-resolution photo.');
+  }
+  return { canvas, image };
+}
+
+async function recognizeLocally(image) {
+  if (!ocrWorker) {
+    ocrWorker = await window.Tesseract.createWorker('eng', 1, {
+      workerPath: `${OCR_ASSETS}worker.min.js`,
+      corePath: `${OCR_ASSETS}core`,
+      langPath: `${OCR_ASSETS}lang`,
+      cachePath: 'recall-offline-ocr-v1',
+      gzip: true,
+      lstmOnly: true,
+      logger: m => {
+        if (m.status) $('#ocr').textContent = `Offline OCR: ${m.status}... ${Math.round((m.progress || 0) * 100)}%`;
+      }
+    });
+  }
+  const result = await ocrWorker.recognize(image);
+  return result.data.text.trim();
+}
+
 $('#file').onchange = async e => {
   const f = e.target.files[0];
   if (!f) return;
-  $('#ocr').textContent = 'Reading notes... 0%';
+  if (!f.type.startsWith('image/')) {
+    $('#ocr').textContent = 'Choose an image file to read notes.';
+    e.target.value = '';
+    return;
+  }
+  $('#ocr').textContent = 'Preparing and enhancing photo...';
   try {
-    if (!ocrWorker) {
-      ocrWorker = await window.Tesseract.createWorker('eng', 1, {
-        workerPath: `${OCR_ASSETS}worker.min.js`,
-        corePath: `${OCR_ASSETS}core`,
-        langPath: `${OCR_ASSETS}lang`,
-        cachePath: 'recall-offline-ocr-v1',
-        gzip: true,
-        lstmOnly: true,
-        logger: m => {
-          if (m.status) $('#ocr').textContent = `${m.status}... ${Math.round((m.progress || 0) * 100)}%`;
+    const { canvas, image } = await prepareOcrImage(f);
+    let text;
+    let message;
+    if (navigator.onLine) {
+      try {
+        $('#ocr').textContent = 'Reading enhanced photo with Google Cloud Vision...';
+        const response = await fetch('./api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image })
+        });
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error || `Handwriting OCR failed (HTTP ${response.status}).`);
         }
-      });
+        const result = await response.json();
+        if (typeof result.text !== 'string') throw new Error('Handwriting OCR returned an invalid response.');
+        if (!result.text.trim()) throw new Error('No text was detected in the photo.');
+        text = result.text.trim();
+        message = 'Handwriting read by Google Cloud Vision. Check the text below.';
+      } catch (error) {
+        console.warn('Google Cloud Vision was unavailable; using local OCR.', error);
+        $('#ocr').textContent = 'Cloud OCR unavailable; trying local OCR...';
+        text = await recognizeLocally(canvas);
+        message = `Used local OCR because Cloud Vision was unavailable (${error.message}). Handwriting accuracy may be limited; check the text below.`;
+      }
+    } else {
+      text = await recognizeLocally(canvas);
+      message = 'Read with local offline OCR. Handwriting accuracy may be limited; check the text below.';
     }
-    const r = await ocrWorker.recognize(f);
-    $('#raw').value = r.data.text.trim();
-    $('#ocr').textContent = 'Done. OCR works offline now. Check for mistakes below.';
+    $('#raw').value = text;
+    $('#ocr').textContent = message;
     showPreview();
   } catch (err) {
-    console.error('Could not read the notes image.', err);
-    $('#ocr').textContent = navigator.onLine
-      ? 'Could not read the photo. Try a clearer photo or paste the text.'
-      : 'Could not load offline OCR files. Reconnect once to install the app files, then try again.';
+    console.error('Could not recognize the notes image.', err);
+    $('#ocr').textContent = `${err.message || 'Could not read the photo.'} Check that the app server and OCR setup are available, or paste the text instead.`;
   }
   e.target.value = '';
 };
@@ -223,23 +302,27 @@ $('#make').onclick = () => {
   p.forEach(x => {
     const old = deck.find(c => c.a.toLowerCase() === x.a.toLowerCase());
     if (old) old.m = x.m;
-    else deck.push({ id: Math.random().toString(36).slice(2), a: x.a, m: x.m, right: 0, wrong: 0, streak: 0, days: 0, last: '' });
+    else deck.push({ id: Math.random().toString(36).slice(2), a: x.a, m: x.m, right: 0, wrong: 0, streak: 0, days: 0, last: '', masteryStatus: 'learning' });
   });
-  save(); $('#raw').value = ''; showPreview();
+  save(); renderStatusSummary(); $('#raw').value = ''; showPreview();
   tab('study'); start();
 };
 
 /* ---------- Deck ---------- */
 function renderDeck() {
-  const n = s => deck.filter(c => status(c) === s).length;
-  $('#stats').innerHTML = ['needs', 'learning', 'mastered'].map(s => `<span class="tag ${s}">${s} ${n(s)}</span>`).join('');
+  $('#stats').innerHTML = statuses.map(s => `<span class="tag ${s}">${s} ${countStatus(s)}</span>`).join('');
   $('#list').innerHTML = [...deck]
     .sort((x, y) => rank[status(x)] - rank[status(y)] || y.wrong - x.wrong)
-    .map(c => `<div class="row"><b>${esc(c.a)}</b><span>${esc(c.m)}</span><em class="tag ${status(c)}">${status(c)}</em></div>`)
+    .map(c => {
+      const mastery = status(c);
+      return `<div class="row"><b>${esc(c.a)}</b><span>${esc(c.m)}</span><em class="tag ${mastery}">${mastery}</em></div>`;
+    })
     .join('') || '<p class="hint">Deck is empty.</p>';
 }
 $('#clear').onclick = () => {
-  if (confirm('Delete all cards and progress?')) { deck = []; queue = []; save(); renderDeck(); }
+  if (confirm('Delete all cards and progress?')) {
+    deck = []; queue = []; save(); renderDeck(); renderStatusSummary();
+  }
 };
 
 /* ---------- Tabs ---------- */
@@ -269,3 +352,4 @@ function burst(ok) {
 }
 
 showPreview();
+renderStatusSummary();

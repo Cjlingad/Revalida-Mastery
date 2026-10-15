@@ -1,9 +1,9 @@
-const CACHE_NAME = 'kristal-shell-v3';
+const CACHE_NAME = 'kristal-shell-v9';
 const APP_SHELL = [
   './',
   './index.html',
   './style.css',
-  './script.js',
+  './script.js?v=9',
   './manifest.json',
   './icon/icon-192.png',
   './icon/icon.jpg',

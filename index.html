@@ -28,9 +28,10 @@
   </nav>
 
   <section id="import" class="box">
-    <label class="btn" for="file">Upload / capture notes</label>
-    <input id="file" type="file" accept="image/*" hidden>
+    <label class="btn" for="file">Take photo / upload notes</label>
+    <input id="file" type="file" accept="image/*" capture="environment" hidden>
     <button class="btn alt" id="sample">Try sample</button>
+    <p class="hint">For clearer results, use bright even light, keep the page flat, and frame the writing closely. Photos are automatically resized and enhanced before OCR.</p>
     <p id="ocr" class="hint"></p>
     <textarea id="raw" placeholder="abd - Abdomen&#10;ROM - Range of Motion"></textarea>
     <div id="preview"></div>
@@ -47,10 +48,16 @@
       <button class="btn mini" id="start">Shuffle &amp; start</button>
     </div>
     <p id="count" class="hint"></p>
+    <p id="status-summary" class="hint" role="status" aria-live="polite"></p>
+    <p class="hint">
+      Got it without flipping = mastered.<br>
+      Flip first, then Got it = learning.<br>
+      Review again = needs.
+    </p>
     <div class="prog"><i id="pbar"></i></div>
     <div id="stage">
       <div id="card">
-        <div class="face front"><small>What does this mean?</small><b id="fa"></b><small>Tap to flip</small></div>
+        <div class="face front"><small>What does this mean?</small><b id="fa"></b><small id="mastery-progress">Tap to flip</small></div>
         <div class="face back"><b id="fm"></b></div>
       </div>
     </div>
@@ -72,6 +79,6 @@
   </section>
 </main>
 <script src="vendor/tesseract/tesseract.min.js"></script>
-<script src="script.js"></script>
+<script src="script.js?v=9"></script>
 </body>
 </html>
